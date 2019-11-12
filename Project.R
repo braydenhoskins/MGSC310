@@ -32,13 +32,19 @@ steam$publisher <- as.factor(steam$publisher)
 ###removingh outliers
 steam <- steam[steam$average_playtime < 100000,]
 steam <- steam[steam$price <100,]
+steam <- steam[steam$average_playtime < 40000,]
+steam <- steam[steam$negative_ratings < 2e+05,]
+steam <- steam[steam$positive_ratings < 1e+06,]
 
 ###creates variable successful game to help predict by (I was thinking we could 
-#use this as our predicted variable)(1 is a successful game - over 10 million sold,0 is anything less)
+#use this as our predicted variable)(1 is a successful game - over 1 million sold,0 is anything less)
 steam$successfulGame <- ifelse(steam$owners == "10000000-20000000",1,
                                ifelse(steam$owners == "20000000-50000000",1,
                                       ifelse(steam$owners == "50000000-100000000",1,
-                                             ifelse(steam$owners == "100000000-200000000",1,0))))
+                                             ifelse(steam$owners == "100000000-200000000",1,
+                                                    ifelse(steam$owners == "5000000-10000000",1,
+                                                           ifelse(steam$owners == "2000000-5000000",1,
+                                                                  ifelse(steam$owners == "1000000-2000000",1,0)))))))
 steam$successfulGame <- as.factor(steam$successfulGame)
 str(steam)
 
@@ -58,8 +64,8 @@ ggplot(steam,aes(x = positive_ratings,y = negative_ratings)) +
   geom_point(aes(color = successfulGame))
 ggplot(steam,aes(x = positive_ratings,y = average_playtime)) +geom_point(aes(color = successfulGame))
 ggplot(steam,aes(x= categories,y =average_playtime)) + geom_boxplot()
-ggplot(steam,aes(x = price,y = successfulGame)) + 
-  geom_point()
+ggplot(steam,aes(x = price,y = average_playtime)) + 
+  geom_point(aes(color = successfulGame))
 summary(steam)
 
 ####dimensionality reduction
