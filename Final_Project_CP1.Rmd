@@ -1,0 +1,100 @@
+---
+title: "Final_Project_Checkpoint1"
+author: "Brayden Hoskins, Noah Estrada-Rand, Charlie Filce"
+date: "November 12, 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Library Calls
+```{r}
+library(glmnet)
+library(glmnetUtils)
+library(forcats)
+library(corrplot)
+library(leaps)
+library(ggplot2)
+library(summarytools)
+```
+
+# Data Cleaning
+```{r}
+steam <- read.csv("steam.csv")
+nrow(steam[!complete.cases(steam),])
+#converts the units into dollars
+steam$price <- steam$price * 1.28
+steam_subset <- subset(steam, select = -c(appid,english,steamspy_tags,name,release_date,platforms,developer,publisher))
+#removing all the ';' delimited variables and assigning them a single value for that column
+steam_subset$genres <- do.call('rbind',strsplit(as.character(steam_subset$genres), ';', fixed=TRUE))[,1]
+steam_subset$categories <- do.call('rbind',strsplit(as.character(steam_subset$categories), ';', fixed=TRUE))[,1]
+#steam_subset$steamspy_tags <- do.call('rbind',strsplit(as.character(steam_subset$steamspy_tags), ';', fixed=TRUE))[,1]
+#steam_subset$publisher <- do.call('rbind',strsplit(as.character(steam_subset$publisher), ';', fixed=TRUE))[,1]
+#steam_subset$developer <- do.call('rbind',strsplit(as.character(steam_subset$developer), ';', fixed=TRUE))[,1]
+#converting them all into factors
+#steam_subset$developer <- as.factor(steam_subset$developer)
+steam_subset$categories <- as.factor(steam_subset$categories)
+steam_subset$genres <- as.factor(steam_subset$genres)
+#steam_subset$publisher <- as.factor(steam_subset$publisher)
+```
+# Creating our predictor variable
+```{r}
+steam_subset$successfulGame <- ifelse(steam_subset$owners == "10000000-20000000",1,
+                                      ifelse(steam_subset$owners == "20000000-50000000",1,
+                                             ifelse(steam_subset$owners == "50000000-100000000",1,
+                                                    ifelse(steam_subset$owners == "100000000-200000000",1,
+                                                           ifelse(steam_subset$owners == "5000000-10000000",1,
+                                                                  ifelse(steam_subset$owners == "2000000-5000000",1,
+                                                                         ifelse(steam_subset$owners == "1000000-2000000",1,0)))))))
+steam_subset$successfulGame <- as.factor(steam_subset$successfulGame)
+```
+# Correlations
+```{r}
+numeric_cols <- sapply(steam_subset,is.numeric)
+correlations <- cor(steam_subset[,numeric_cols])
+corrplot(correlations)
+```
+# Train/Test Split
+```{r}
+# Do not actually use this since the results from a logit mod were not useful
+train_idx <- sample(1:nrow(steam_subset),size = .7*nrow(steam_subset))
+steam_subset_train <- steam_subset[train_idx,]
+steam_subset_test <- steam_subset[-train_idx,]
+```
+# Lasso Mod
+```{r}
+steam_lasso <- cv.glmnet(successfulGame~.,
+                         data = steam_subset,
+                         alpha = 1,
+                         family = "binomial")
+as.matrix(round(coef(steam_lasso, s = steam_lasso$lambda.min),3))
+as.matrix(round(coef(steam_lasso, s = steam_lasso$lambda.1se),3))
+```
+# Forward Step-Wise
+```{r}
+steam_fit_fwd <- regsubsets(successfulGame ~ ., data = steam_subset, nvmax = 8, method = 'forward')
+summary(steam_fit_fwd)
+```
+# Backward Step-Wise
+```{r}
+steam_fit_bwd <- regsubsets(successfulGame ~ ., data = steam_subset, nvmax = 8, method = 'backward')
+summary(steam_fit_bwd)
+```
+# Plots
+```{r}
+ggplot(steam_subset,aes(x = achievements,y = average_playtime)) + geom_point(aes(color = successfulGame))+
+  geom_smooth() + labs(x = "Number of In-Game Achievements",y = "Average Playtime (hrs)",
+                       title = "Plotted Achievements and Average Playtime")
+ggplot(steam_subset,aes(x = positive_ratings,y = negative_ratings)) + 
+  geom_point(aes(color = successfulGame))+
+  labs(x = "Number of Positive Ratings in the Steam Store",y = "Negative Ratings in the Steam Store",
+       title = "Positive Ratings Plotted Against Negative Ratings")
+ggplot(steam_subset,aes(x = positive_ratings,y = average_playtime)) +geom_point(aes(color = successfulGame))+
+  labs(x = "Number of Positive Ratings in the Steam Store",y = "Average Playtime (hrs)",
+       title = "Average Playtime Plotted against Positive Ratings")
+ggplot(steam_subset,aes(x = price,y = average_playtime)) + 
+  geom_point(aes(color = successfulGame)) + 
+  labs(x = "Price of the Game (dollars)",y ="Average Playtime (hrs)",
+       title = "Average Playtime Plotted Against Price of Game")
+```
