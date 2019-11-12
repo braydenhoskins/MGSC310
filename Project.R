@@ -1,4 +1,4 @@
-setwd("C:\\Users\\noahe\\Desktop\\310_group")
+setwd("C:\\Users\\noahe\\Desktop\\MGSC310")
 steam <- read.csv("steam.csv")
 
 #####exploratory data analysis
@@ -20,7 +20,6 @@ steam<- subset(steam, select = -c(appid,english,steamspy_tags,
 ####I got rid of all the ';' delimited variables and instead assigned them a single value for that columne
 steam$genres <- do.call('rbind',strsplit(as.character(steam$genres), ';', fixed=TRUE))[,1]
 steam$categories <- do.call('rbind',strsplit(as.character(steam$categories), ';', fixed=TRUE))[,1]
-steam$steamspy_tags <- do.call('rbind',strsplit(as.character(steam$steamspy_tags), ';', fixed=TRUE))[,1]
 steam$publisher <- do.call('rbind',strsplit(as.character(steam$publisher), ';', fixed=TRUE))[,1]
 steam$developer <- do.call('rbind',strsplit(as.character(steam$developer), ';', fixed=TRUE))[,1]
 ###turn them all into factors
@@ -28,6 +27,11 @@ steam$developer <- as.factor(steam$developer)
 steam$categories <- as.factor(steam$categories)
 steam$genres <- as.factor(steam$genres)
 steam$publisher <- as.factor(steam$publisher)
+
+
+###removingh outliers
+steam <- steam[steam$average_playtime < 100000,]
+steam <- steam[steam$price <100,]
 
 ###creates variable successful game to help predict by (I was thinking we could 
 #use this as our predicted variable)(1 is a successful game - over 10 million sold,0 is anything less)
@@ -45,16 +49,6 @@ library(corrplot)
 correlations <- cor(steam[,numeric_cols])
 corrplot(correlations)
 
-####dimensionality reduction
-####Dont run this, it takes too long, we need to use other dimensionality reduction techniques
-library(glmnet)
-library(glmnetUtils)
-steam_lasso <- cv.glmnet(successfulGame~.,
-                         data = steam,
-                         alpha = 1,
-                         family = "binomial")
-
-
 
 ####summary plots of random things, our data is pretty ininteresting to look at
 library(ggplot2)
@@ -67,3 +61,12 @@ ggplot(steam,aes(x= categories,y =average_playtime)) + geom_boxplot()
 ggplot(steam,aes(x = price,y = successfulGame)) + 
   geom_point()
 summary(steam)
+
+####dimensionality reduction
+####Dont run this, it takes too long, we need to use other dimensionality reduction techniques
+library(glmnet)
+library(glmnetUtils)
+steam_lasso <- cv.glmnet(successfulGame~.,
+                         data = steam,
+                         alpha = 1,
+                         family = "binomial")
