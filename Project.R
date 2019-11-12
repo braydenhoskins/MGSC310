@@ -55,6 +55,12 @@ library(corrplot)
 correlations <- cor(steam[,numeric_cols])
 corrplot(correlations)
 
+####Summary Table
+#install.packages("summarytools")
+library(summarytools)
+descr(steam)
+
+
 
 ####summary plots of random things, our data is pretty ininteresting to look at
 library(ggplot2)
