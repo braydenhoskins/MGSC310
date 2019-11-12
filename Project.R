@@ -59,13 +59,19 @@ corrplot(correlations)
 ####summary plots of random things, our data is pretty ininteresting to look at
 library(ggplot2)
 ggplot(steam,aes(x = achievements,y = average_playtime)) + geom_point(aes(color = successfulGame))+
-  geom_smooth()
+  geom_smooth() + labs(x = "Number of In-Game Achievements",y = "Average Playtime (hrs)",
+                       title = "Plotted Achievements and Average Playtime")
 ggplot(steam,aes(x = positive_ratings,y = negative_ratings)) + 
-  geom_point(aes(color = successfulGame))
-ggplot(steam,aes(x = positive_ratings,y = average_playtime)) +geom_point(aes(color = successfulGame))
-ggplot(steam,aes(x= categories,y =average_playtime)) + geom_boxplot()
+  geom_point(aes(color = successfulGame))+
+  labs(x = "Number of Positive Ratings in the Steam Store",y = "Negative Ratings in the Steam Store",
+       title = "Positive Ratings Plotted Against Negative Ratings")
+ggplot(steam,aes(x = positive_ratings,y = average_playtime)) +geom_point(aes(color = successfulGame))+
+  labs(x = "Number of Positive Ratings in the Steam Store",y = "Average Playtime (hrs)",
+       title = "Average Playtime Plotted against Positive Ratings")
 ggplot(steam,aes(x = price,y = average_playtime)) + 
-  geom_point(aes(color = successfulGame))
+  geom_point(aes(color = successfulGame)) + 
+  labs(x = "Price of the Game (dollars)",y ="Average Playtime (hrs)",
+       title = "Average Playtime Plotted Against Price of Game")
 summary(steam)
 
 ####dimensionality reduction
