@@ -1,3 +1,6 @@
+
+###Summary Statistics R code by Noah Estrada-Rand, Brady Hoskins, Charles Filce
+
 setwd("C:\\Users\\noahe\\Desktop\\MGSC310")
 steam <- read.csv("steam.csv")
 
@@ -46,6 +49,12 @@ steam$successfulGame <- ifelse(steam$owners == "10000000-20000000",1,
                                                            ifelse(steam$owners == "2000000-5000000",1,
                                                                   ifelse(steam$owners == "1000000-2000000",1,0)))))))
 steam$successfulGame <- as.factor(steam$successfulGame)
+steam <- subset(steam, select = -c(owners,developer))
+
+library(summarytools)
+descr(steam)
+
+
 str(steam)
 
 ####correlations
@@ -72,6 +81,18 @@ ggplot(steam,aes(x = price,y = average_playtime)) +
   geom_point(aes(color = successfulGame)) + 
   labs(x = "Price of the Game (dollars)",y ="Average Playtime (hrs)",
        title = "Average Playtime Plotted Against Price of Game")
+ggplot(steam,aes(x = average_playtime,y = successfulGame)) +
+  geom_point()+
+  labs(title = "Successful Game plotted Against Average Playtime",
+       x = "Average Playtime (hrs)",y = "Successful Game (1 = Yes, 0 = No)")
+boxplot(steam$average_playtime~steam$required_age,
+        main = "Average Playtime by Required Age",xlab = "Required Age (years)",
+        ylab = "Average Playtime")
+ggplot(steam,aes(x = price,y = successfulGame)) +
+  geom_point()+
+  labs(title = "Successful Game plotted Against Average Playtime",
+       x = "Price of a Game (dollars)",y = "Successful Game (1 = Yes, 0 = No)")
+
 summary(steam)
 
 ####dimensionality reduction
