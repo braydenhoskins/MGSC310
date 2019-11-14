@@ -44,8 +44,8 @@ steam <- steam[steam$positive_ratings < 1e+06,]
 # Creating Groups of factored variables
 library(forcats)
 library(tidyverse)
-fct_count(steam_subset$categories)
-steam_subset %>%
+fct_count(steam$categories)
+steam %>%
   mutate(categories = fct_lump(categories, n =5))%>%
   count(categories)
 
