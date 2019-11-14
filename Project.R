@@ -34,12 +34,20 @@ steam$genres <- as.factor(steam$genres)
 steam$publisher <- as.factor(steam$publisher)
 
 
-###removingh outliers
+###removing outliers
 steam <- steam[steam$average_playtime < 100000,]
 steam <- steam[steam$price <100,]
 steam <- steam[steam$average_playtime < 40000,]
 steam <- steam[steam$negative_ratings < 2e+05,]
 steam <- steam[steam$positive_ratings < 1e+06,]
+
+# Creating Groups of factored variables
+library(forcats)
+library(tidyverse)
+fct_count(steam_subset$categories)
+steam_subset %>%
+  mutate(categories = fct_lump(categories, n =5))%>%
+  count(categories)
 
 ###creates variable successful game to help predict by (I was thinking we could 
 #use this as our predicted variable)(1 is a successful game - over 1 million sold,0 is anything less)
