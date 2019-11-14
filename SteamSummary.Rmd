@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 setwd("C:\\Users\\noahe\\Desktop\\MGSC310")
 steam <- read.csv("steam.csv")
 library(summarytools)
+library(forcats)
 library(corrplot)
 library(ggplot2)
 ```
@@ -30,30 +31,26 @@ steam$price <- steam$price *1.28
 ```{r}
 steam<- subset(steam, select = -c(appid,english,steamspy_tags,
                                   name,release_date,
-                                  platforms))
+                                  platforms,publisher,developer))
 ```
 
 ## Rid the Data set of All Cells Delimited by ";"
 ```{r}
 steam$genres <- do.call('rbind',strsplit(as.character(steam$genres), ';', fixed=TRUE))[,1]
 steam$categories <- do.call('rbind',strsplit(as.character(steam$categories), ';', fixed=TRUE))[,1]
-steam$publisher <- do.call('rbind',strsplit(as.character(steam$publisher), ';', fixed=TRUE))[,1]
-steam$developer <- do.call('rbind',strsplit(as.character(steam$developer), ';', fixed=TRUE))[,1]
 ```
 
 ## Make The Above Variables into Factors
 ```{r}
-steam$developer <- as.factor(steam$developer)
 steam$categories <- as.factor(steam$categories)
 steam$genres <- as.factor(steam$genres)
-steam$publisher <- as.factor(steam$publisher)
 ```
 
 
 ## Removal of Extreme Values
 ```{r}
 steam <- steam[steam$average_playtime < 100000,]
-steam <- steam[steam$price <100,]
+steam <- steam[steam$price <50,]
 steam <- steam[steam$average_playtime < 40000,]
 steam <- steam[steam$negative_ratings < 2e+05,]
 steam <- steam[steam$positive_ratings < 1e+06,]
@@ -75,8 +72,14 @@ steam$categories <- ifelse(steam$categories == "Single-player","SinglePlayer",
                                                                                                  ifelse(steam$categories == "Steam Leaderboards","Steam",
                                                                                                         ifelse(steam$categories == "Steam Achievements","Steam","Other")))))))))))))
 steam$categories <- as.factor(steam$categories)
+unique(steam$categories)
 ```
 
+## Grouping Genres into Larger Umbrella Genres
+```{r}
+steam$genres <- fct_lump(steam$genres,n = 5)
+unique(steam$genres)
+```
 
 ## Creation of New Binary Dummy Variable to Signify A Successful or Unsuccessful Game (Successful defined as any game selling over one million copies)
 ```{r}
@@ -91,9 +94,9 @@ steam$successfulGame <- as.factor(steam$successfulGame)
 
 ```
 
-## Removal Of Owners and Developer Variables Since we are now predicting on Successful/Unsuccessful
+## Removal Of Owners Variable Since we are now predicting on Successful/Unsuccessful
 ```{r}
-steam <- subset(steam, select = -c(owners,developer))
+steam <- subset(steam, select = -c(owners))
 ```
 
 # Summary Statistics Table
@@ -155,9 +158,15 @@ ggplot(steam,aes(x = price,y = successfulGame)) +
        x = "Price of a Game (dollars)",y = "Successful Game (1 = Yes, 0 = No)")
 ```
 Here it appears as though non successful games have a larger spread of price while the more successful games stay in the lower price ranges.  This leads us to believe that having too expensive of a game deters people from purchasing the game whil having the game at lower prices allows people to buy more of the game.
-
 ```{r}
-steam$categories <- do.call('rbind',strsplit(as.character(steam$categories), ';', fixed=TRUE))[,1]
-steam$categories <- as.factor(steam$categories)
-unique(steam$categories)
+boxplot(steam$price~steam$categories,
+        main = "Boxplot of Price By Category",
+        xlab = "Categories",
+        ylab = "Price (dollars)")
 ```
+The above boxplot shows how the spread of price values for video games differ across the main categories of games. It appears that the spread of prices are generally the same, yet single player video games appear to have the most amount of outliers compared to other main categories.
+```{r}
+ggplot(steam,aes(x = genres,y = price)) + geom_boxplot() + 
+  labs(title = "Boxplots of Price By Genre",x = "Genres",y = "Price (dollars)")
+```
+From the above boxplot we can determine that the spread of prices are generally larger for indie games and "other" games than when compared with the remaining main genres.  This is interesting, as perhaps the increased price of indie games and miscelaneous games may have an effect on the amount of copies bought, thus effecting its ability to sell over 1,000,000 copies.  However, previous plots illustrating the relationship between price and successful game suggest there may not be a significant relationship between the two variables.
