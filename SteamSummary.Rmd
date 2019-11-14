@@ -59,6 +59,25 @@ steam <- steam[steam$negative_ratings < 2e+05,]
 steam <- steam[steam$positive_ratings < 1e+06,]
 ```
 
+# Categorizing Various Categories into Less Categories to reduce Dimensionality
+```{r}
+steam$categories <- ifelse(steam$categories == "Single-player","SinglePlayer",
+                           ifelse(steam$categories == "Multi-player","Multi-Player",
+                                  ifelse(steam$categories == "Online Multi-Player","Multi-Player",
+                                         ifelse(steam$categories == "Local Multi-Player","Multi-Player",
+                                                ifelse(steam$categories == "MMO","MMO",
+                                                       ifelse(steam$categories == "Co-op","Co-op",
+                                                              ifelse(steam$categories == "Shared/Split Screen","Co-op",
+                                                                     ifelse(steam$categories == "Local Co-op","Co-op",
+                                                                            ifelse(steam$categories == "Online Co-op","Co-op",
+                                                                                   ifelse(steam$categories == "Steam Cloud","Steam",
+                                                                                          ifelse(steam$categories == "Steam Trading Cards","Steam",
+                                                                                                 ifelse(steam$categories == "Steam Leaderboards","Steam",
+                                                                                                        ifelse(steam$categories == "Steam Achievements","Steam","Other")))))))))))))
+steam$categories <- as.factor(steam$categories)
+```
+
+
 ## Creation of New Binary Dummy Variable to Signify A Successful or Unsuccessful Game (Successful defined as any game selling over one million copies)
 ```{r}
 steam$successfulGame <- ifelse(steam$owners == "10000000-20000000",1,
@@ -69,6 +88,7 @@ steam$successfulGame <- ifelse(steam$owners == "10000000-20000000",1,
                                                            ifelse(steam$owners == "2000000-5000000",1,
                                                                   ifelse(steam$owners == "1000000-2000000",1,0)))))))
 steam$successfulGame <- as.factor(steam$successfulGame)
+
 ```
 
 ## Removal Of Owners and Developer Variables Since we are now predicting on Successful/Unsuccessful
@@ -135,3 +155,9 @@ ggplot(steam,aes(x = price,y = successfulGame)) +
        x = "Price of a Game (dollars)",y = "Successful Game (1 = Yes, 0 = No)")
 ```
 Here it appears as though non successful games have a larger spread of price while the more successful games stay in the lower price ranges.  This leads us to believe that having too expensive of a game deters people from purchasing the game whil having the game at lower prices allows people to buy more of the game.
+
+```{r}
+steam$categories <- do.call('rbind',strsplit(as.character(steam$categories), ';', fixed=TRUE))[,1]
+steam$categories <- as.factor(steam$categories)
+unique(steam$categories)
+```

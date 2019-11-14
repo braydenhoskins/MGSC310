@@ -49,6 +49,25 @@ steam %>%
   mutate(categories = fct_lump(categories, n =5))%>%
   count(categories)
 
+###one way to do it
+steam$simple_categories <- fct_lump(steam$categories,n = 4)
+
+steam$categories <- ifelse(steam$categories == "Single-player","SinglePlayer",
+                           ifelse(steam$categories == "Multi-player","Multi-Player",
+                                  ifelse(steam$categories == "Online Multi-Player","Multi-Player",
+                                         ifelse(steam$categories == "Local Multi-Player","Multi-Player",
+                                                ifelse(steam$categories == "MMO","MMO",
+                                                       ifelse(steam$categories == "Co-op","Co-op",
+                                                              ifelse(steam$categories == "Shared/Split Screen","Co-op",
+                                                                     ifelse(steam$categories == "Local Co-op","Co-op",
+                                                                            ifelse(steam$categories == "Online Co-op","Co-op",
+                                                                                   ifelse(steam$categories == "Steam Cloud","Steam",
+                                                                                          ifelse(steam$categories == "Steam Trading Cards","Steam",
+                                                                                                 ifelse(steam$categories == "Steam Leaderboards","Steam",
+                                                                                                        ifelse(steam$categories == "Steam Achievements","Steam","Other")))))))))))))
+steam$categories <- as.factor(steam$categories)
+
+unique(steam$categories)
 ###creates variable successful game to help predict by (I was thinking we could 
 #use this as our predicted variable)(1 is a successful game - over 1 million sold,0 is anything less)
 steam$successfulGame <- ifelse(steam$owners == "10000000-20000000",1,
