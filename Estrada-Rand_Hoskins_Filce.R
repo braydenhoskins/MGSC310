@@ -81,7 +81,7 @@ steam$successfulGame <- ifelse(steam$owners == "10000000-20000000",1,
                                                            ifelse(steam$owners == "2000000-5000000",1,
                                                                   ifelse(steam$owners == "1000000-2000000",1,0)))))))
 steam$successfulGame <- as.factor(steam$successfulGame)
-steam <- subset(steam, select = -c(owners))
+steam <- subset(steam, select = -c(owners,categories))
 
 library(summarytools)
 descr(steam)
@@ -143,6 +143,46 @@ steam_lasso <- cv.glmnet(successfulGame~.,
                          data = steam,
                          alpha = 1,
                          family = "binomial")
+
+
+
+
+
+####### finding the best mtry to use
+set.seed(2019)
+library(randomForest)
+rf_mods <- list()
+oob_err <- NULL##to store out of bag error
+test_err <- NULL
+for(mtry in 1:9){
+  rf_fit <- randomForest(successfulGame~.,
+                         data = steam,
+                         mtry = mtry,
+                         ntrees = 500,
+                         type = classification)
+  oob_err[mtry] <- rf_fit$err.rate[500]
+}
+results_df <- data.frame(mtry = 1:9,
+                         oob_err)
+ggplot(results_df,aes(x = mtry,y = oob_err)) + geom_point() +geom_line()
+
+
+
+library(randomForest)
+random_forest_steam <- randomForest(successfulGame~.,
+                                    data = steam,
+                                    mtry = 4,
+                                    ntrees = 500,
+                                    type = classification,
+                                    importance = TRUE)
+####find that the best m is 4
+
+
+
+importance(random_forest_steam)
+plot(random_forest_steam)
+text(random_forest_steam,pretty = 0)
+
 
 ####dimensionality reduction
 ####Dont run this, it takes too long, we need to use other dimensionality reduction techniques
