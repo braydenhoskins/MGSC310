@@ -150,13 +150,17 @@ steam_lasso <- cv.glmnet(successfulGame~.,
 
 ####### finding the best mtry to use
 set.seed(2019)
+train_idx <- sample(1:nrow(steam), size = floor(.75 * nrow(steam)))
+steam_train <- steam[train_idx,]
+steam_test <- steam[-train_idx,]
+
 library(randomForest)
 rf_mods <- list()
 oob_err <- NULL##to store out of bag error
 test_err <- NULL
 for(mtry in 1:9){
   rf_fit <- randomForest(successfulGame~.,
-                         data = steam,
+                         data = steam_train,
                          mtry = mtry,
                          ntrees = 500,
                          type = classification)
@@ -170,7 +174,7 @@ ggplot(results_df,aes(x = mtry,y = oob_err)) + geom_point() +geom_line()
 
 library(randomForest)
 random_forest_steam <- randomForest(successfulGame~.,
-                                    data = steam,
+                                    data = steam_test,
                                     mtry = 4,
                                     ntrees = 500,
                                     type = classification,
