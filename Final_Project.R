@@ -10,6 +10,7 @@ library(glmnet)
 library(glmnetUtils)
 library(randomForest)
 library(randomForestExplainer)
+library(caret)
 
 #------------------------------------#
 #       Importing Data Set           #
@@ -184,3 +185,32 @@ steam_lasso <- cv.glmnet(successfulGame~.,
                          alpha = 1,
                          family = "binomial")
 # The lasso model would take very long before we reduced the dimensions of the categories and genres variables
+
+#---------------------------------------#
+#       K-fold Cross Validation         #
+#---------------------------------------#
+
+# creating folds (using createFolds from caret package)
+steam_subset$folds <- createFolds(steam_subset$successfulGame, k = 10, list = FALSE)
+steam_subset$row_num <- 1:nrow(steam)
+
+
+### K-Fold Cross Validation
+nfolds <- 10
+preds_KFold_CV_DF <- data.frame(folds = steam_subset$folds,rownum = steam_subset$row_num,preds_KFold_CV = rep(NA,nrow(steam_subset)))
+
+# for loop for K-Fold CV
+for(i in 1:nfolds){
+  mod <- lm(successfulGame ~ ., 
+            data = steam_subset[steam_subset$folds != i,])
+  preds <- predict(mod, 
+                   newdata = steam_subset[steam_subset$folds == i,])
+  preds_KFold_CV_DF[preds_KFold_CV_DF$folds == i,"preds_KFold_CV"]  <- preds
+}
+
+preds_DF <- data.frame(preds_KFold_CV = preds_KFold_CV_DF$preds_KFold_CV,true = steam$successfulGame)
+
+RMSE <- function(t, p) {
+  sqrt(sum(((t - p)^2)) * (1/length(t)))
+}
+RMSE(preds_DF$preds_KFold_CV,as.numeric(preds_DF$true))
