@@ -17,6 +17,7 @@ library(caret)
 #------------------------------------#
 steam <- read.csv("steam.csv")
 
+
 #---------------------------------------------#
 #        Exploratory Data Analysis            #
 #---------------------------------------------#
@@ -83,6 +84,7 @@ steam$successfulGame <- ifelse(steam$owners == "10000000-20000000",1,
                                                            ifelse(steam$owners == "2000000-5000000",1,
                                                                   ifelse(steam$owners == "1000000-2000000",1,0)))))))
 steam$successfulGame <- as.factor(steam$successfulGame)
+steam <- subset(steam, select = -c(owners,categories))
 # Creating variable successful game, 1 = Successful with over 1 million games sold, 0 for everything less
 
 #-------------------------------------#

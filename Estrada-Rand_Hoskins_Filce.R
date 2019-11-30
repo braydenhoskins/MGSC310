@@ -135,6 +135,51 @@ ggplot(steam,aes(x = genres,y = price)) + geom_boxplot() +
 
 summary(steam)
 
+
+
+
+####regsubsets
+library(leaps)
+steam_fwd <- regsubsets(successfulGame~.,
+                        data = steam,
+                        nvmax = 9,
+                        method = "forward")
+summary(steam_fwd)
+plot(steam_fwd,scaele = "adjr2")
+
+which.max(summary(steam_fwd)$adjr2)
+
+steam_reg_subsets <- regsubsets(successfulGame~.,
+                                data = steam,
+                                nvmax = 8)
+
+summary(steam_reg_subsets)
+plot(steam_reg_subsets,scale = "adjr2")
+which.max(summary(steam_reg_subsets)$adjr2)
+
+
+
+
+#####
+set.seed(2019)
+train_index <- sample(1:nrow(steam),.75*nrow(steam),replace = FALSE)
+steam_train <- steam[train_index,]
+steam_test <- steam[-train_index,]
+steam_logit <- glm(successfulGame~.,
+                   data = steam_train,
+                   family = "binomial")
+
+preds_LOOCV = NULL;
+for(i in 1:nrow(steam_train)){
+  mod <- glm(successfulGame~., family = binomial,
+             data = steam_train[-i,])
+  preds_LOOCV[i] <- predict(mod,newdata = steam_test[i,],type = "response")
+}
+head(preds_LOOCV)
+preds_train <- data.frame(preds_train,loocvPreds = preds_LOOCV)
+
+
+
 ####dimensionality reduction
 ####Dont run this, it takes too long, we need to use other dimensionality reduction techniques
 library(glmnet)
@@ -144,7 +189,7 @@ steam_lasso <- cv.glmnet(successfulGame~.,
                          alpha = 1,
                          family = "binomial")
 
-
+steam_lasso$lambda.min
 
 
 
@@ -196,6 +241,8 @@ steam_lasso <- cv.glmnet(successfulGame~.,
                          data = steam,
                          alpha = 1,
                          family = "binomial")
+
+plot(steam_lasso)
 =======
 setwd("C:\\Users\\noahe\\Desktop\\MGSC310")
 steam <- read.csv("steam.csv")
