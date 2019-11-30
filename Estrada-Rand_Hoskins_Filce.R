@@ -82,6 +82,7 @@ steam$successfulGame <- ifelse(steam$owners == "10000000-20000000",1,
                                                                   ifelse(steam$owners == "1000000-2000000",1,0)))))))
 steam$successfulGame <- as.factor(steam$successfulGame)
 steam <- subset(steam, select = -c(owners,categories))
+steam$required_age <- as.factor(steam$required_age)
 
 library(summarytools)
 descr(steam)
@@ -165,18 +166,41 @@ set.seed(2019)
 train_index <- sample(1:nrow(steam),.75*nrow(steam),replace = FALSE)
 steam_train <- steam[train_index,]
 steam_test <- steam[-train_index,]
+dim(steam_train)
+dim(steam_test)
 steam_logit <- glm(successfulGame~.,
                    data = steam_train,
                    family = "binomial")
+steam_logit <- glm(successfulGame~price+positive_ratings+
+                     negative_ratings + factor(genres) + factor(required_age),
+                   data = steam_train,
+                   family = "binomial")
+summary(steam_logit)
 
-preds_LOOCV = NULL;
-for(i in 1:nrow(steam_train)){
-  mod <- glm(successfulGame~., family = binomial,
-             data = steam_train[-i,])
-  preds_LOOCV[i] <- predict(mod,newdata = steam_test[i,],type = "response")
-}
-head(preds_LOOCV)
-preds_train <- data.frame(preds_train,loocvPreds = preds_LOOCV)
+quick_preds <- predict(steam_logit,type = "response")
+table(quick_preds)
+
+preds_train <- data.frame(steam_train,predictions = predict(steam_logit,type = "response"))
+preds_test <- data.frame(steam_test,predictions = predict(steam_logit,newdata = steam_test,
+                                            type = "response"))
+
+
+library(plotROC)
+library(ggplot2)
+
+inSampleROC <- ggplot(preds_train,aes(m = predictions,
+                                     d = successfulGame)) +
+  geom_roc(labelsize = 3.5,
+           cutoffs.at = c(.99,.9,.7,.6,.5,.4,.1,.01)) +
+  labs(title = "ROC Curve for In-Sample Predictions",x = "False Positive Fraction",
+       y= "True Positive Fraction")
+testROC <- ggplot(preds_test,aes(m = predictions,
+                                 d = successfulGame)) +
+  geom_roc(labelsize = 3.5,
+           cutoffs.at = c(.99,.9,.7,.6,.5,.4,.1,.01)) +
+  labs(title = "ROC Curve for Test Predictions",x = "False Positive Fraction",
+       y= "True Positive Fraction")
+
 
 
 
@@ -216,22 +240,97 @@ results_df <- data.frame(mtry = 1:9,
 ggplot(results_df,aes(x = mtry,y = oob_err)) + geom_point() +geom_line()
 
 
+####bagging for randomforest
+steam_bagged <- randomForest(successfulGame~.,
+                             data = steam_train,
+                             mtry = 9,
+                             ntrees = 500,
+                             type = classification,
+                             importance = TRUE)
+bagged_preds <- predict(steam_bagged,type = "response")
+table(bagged_preds)
+preds_train_bagged <- data.frame(steam_train,bag_preds = bagged_preds)
+preds_test_bagged <-data.frame(steam_test,bag_preds = predict(steam_bagged,
+                                                              newdata = steam_test,
+                                                              type = "response"))
 
+
+library(gmodels)
+###training confusion matrix
+CrossTable(preds_train_bagged$successfulGame,preds_train_bagged$bag_preds,
+           prop.r = FALSE,
+           prop.c = FALSE,
+           prop.t = FALSE,
+           prop.chisq = FALSE)
+###test confusion matrix
+CrossTable(preds_test_bagged$successfulGame,preds_test_bagged$bag_preds,
+           prop.r = FALSE,
+           prop.c = FALSE,
+           prop.t = FALSE,
+           prop.chisq = FALSE)
+
+###
 library(randomForest)
 random_forest_steam <- randomForest(successfulGame~.,
-                                    data = steam_test,
+                                    data = steam_train,
                                     mtry = 4,
                                     ntrees = 500,
                                     type = classification,
                                     importance = TRUE)
+random_forest_preds <- predict(random_forest_steam,type = "response")
+preds_2 <- data.frame(steam_train,preds= random_forest_preds)
+preds_test_2 <-data.frame(steam_test,preds = predict(random_forest_steam,
+                                                     newdata = steam_test,
+                                                     type = "response"))
+#importance check
+importance(random_forest_steam)
+plot(random_forest_steam)
+varImpPlot(random_forest_steam)
+##training confusion matrix
+CrossTable(preds_2$successfulGame,preds_2$preds,
+           prop.r = FALSE,
+           prop.c = FALSE,
+           prop.t = FALSE,
+           prop.chisq = FALSE)
+#test confusion matrix
+CrossTable(preds_test_2$successfulGame,preds_test_2$preds,
+           prop.r = FALSE,
+           prop.c = FALSE,
+           prop.t = FALSE,
+           prop.chisq = FALSE)
+
+
 ####find that the best m is 4
 
 
+###tree based on the top 4 most important variables
+library(tree)
+steam_tree <- tree(successfulGame~positive_ratings +
+                     price + achievements + negative_ratings,
+                   data = steam_train)
+plot(steam_tree)
+text(steam_tree,pretty = 0)
 
-importance(random_forest_steam)
-plot(random_forest_steam)
-text(random_forest_steam,pretty = 0)
+###performance 
+basic_preds_train <- data.frame(steam_train,preds = predict(steam_tree,
+                                                            type = "class"))
+basic_preds_test <- data.frame(steam_test,preds = predict(steam_tree,
+                                                          newdata = steam_test,
+                                                          type = "class"))
+###for train
+CrossTable(basic_preds_train$successfulGame,basic_preds_train$preds,
+           prop.r = FALSE,
+           prop.c = FALSE,
+           prop.t = FALSE,
+           prop.chisq = FALSE)
+###for test
+CrossTable(basic_preds_test$successfulGame, basic_preds_test$preds,
+           prop.r = FALSE,
+           prop.c = FALSE,
+           prop.t = FALSE,
+           prop.chisq = FALSE)
 
+predict(steam_tree)
 
 ####dimensionality reduction
 ####Dont run this, it takes too long, we need to use other dimensionality reduction techniques
