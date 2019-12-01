@@ -40,13 +40,11 @@ steam <- steam[steam$positive_ratings < 1e+06,]
 # Creating Groups of factored variables
 library(forcats)
 library(tidyverse)
-fct_count(steam$categories)
-steam %>%
-  mutate(categories = fct_lump(categories, n =5))%>%
-  count(categories)
+
 
 ###one way to do it
 steam$simple_categories <- fct_lump(steam$categories,n = 4)
+unique(steam$simple_categories)
 
 steam$categories <- ifelse(steam$categories == "Single-player","SinglePlayer",
                            ifelse(steam$categories == "Multi-player","Multi-Player",
@@ -81,7 +79,8 @@ steam$successfulGame <- ifelse(steam$owners == "10000000-20000000",1,
                                                            ifelse(steam$owners == "2000000-5000000",1,
                                                                   ifelse(steam$owners == "1000000-2000000",1,0)))))))
 steam$successfulGame <- as.factor(steam$successfulGame)
-steam <- subset(steam, select = -c(owners,categories))
+steam <- subset(steam, select = -c(owners,categories,positive_ratings,negative_ratings,
+                                   median_playtime))
 steam$required_age <- as.factor(steam$required_age)
 
 library(summarytools)
@@ -173,7 +172,8 @@ steam_logit <- glm(successfulGame~.,
                    data = steam_train,
                    family = "binomial")
 ####the issue was the positive and negative ratings
-steam_logit <- glm(successfulGame~price+factor(genres) + factor(required_age),
+steam_logit <- glm(successfulGame~price+factor(genres) + factor(required_age)+
+                     average_playtime,
                    data = steam_train,
                    family = "binomial")
 summary(steam_logit)
@@ -283,6 +283,7 @@ preds_train_bagged <- data.frame(steam_train,bag_preds = bagged_preds)
 preds_test_bagged <-data.frame(steam_test,bag_preds = predict(steam_bagged,
                                                               newdata = steam_test,
                                                               type = "response"))
+varImpPlot(steam_bagged)
 
 
 library(gmodels)
@@ -370,7 +371,6 @@ CrossTable(basic_preds_test$successfulGame, basic_preds_test$preds,
            prop.t = FALSE,
            prop.chisq = FALSE)
 
-predict(steam_tree)
 
 ####dimensionality reduction
 ####Dont run this, it takes too long, we need to use other dimensionality reduction techniques
