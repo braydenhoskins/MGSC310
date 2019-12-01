@@ -247,11 +247,14 @@ train_idx <- sample(1:nrow(steam), size = floor(.75 * nrow(steam)))
 steam_train <- steam[train_idx,]
 steam_test <- steam[-train_idx,]
 
+###necessary for other models
+steam$successfulGame <- as.factor(steam$successfulGame)
+
 library(randomForest)
 rf_mods <- list()
 oob_err <- NULL##to store out of bag error
 test_err <- NULL
-for(mtry in 1:9){
+for(mtry in 1:6){
   rf_fit <- randomForest(successfulGame~.,
                          data = steam_train,
                          mtry = mtry,
@@ -259,7 +262,7 @@ for(mtry in 1:9){
                          type = classification)
   oob_err[mtry] <- rf_fit$err.rate[500]
 }
-results_df <- data.frame(mtry = 1:9,
+results_df <- data.frame(mtry = 1:6,
                          oob_err)
 ggplot(results_df,aes(x = mtry,y = oob_err)) + geom_point() +geom_line()
 
@@ -267,7 +270,7 @@ ggplot(results_df,aes(x = mtry,y = oob_err)) + geom_point() +geom_line()
 ####bagging for randomforest
 steam_bagged <- randomForest(successfulGame~.,
                              data = steam_train,
-                             mtry = 8,
+                             mtry = 6,
                              ntrees = 500,
                              type = classification,
                              importance = TRUE)
@@ -340,9 +343,10 @@ best_tree_index <- which.min(tree_cv$dev)
 tree_cv$size[best_tree_index]
 
 ####same as above, thus no pruning needed
-pruned_tree <- prune.tree(steam_tree,best = 6)
+pruned_tree <- prune.tree(steam_tree,best = 5)
 plot(pruned_tree)
 text(pruned_tree,pretty=0)
+###dont use above, leads to predictions of all zeros
 
 
 ###performance 
