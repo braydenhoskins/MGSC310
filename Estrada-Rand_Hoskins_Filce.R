@@ -78,7 +78,7 @@ steam$successfulGame <- ifelse(steam$owners == "10000000-20000000",1,
                                                     ifelse(steam$owners == "5000000-10000000",1,
                                                            ifelse(steam$owners == "2000000-5000000",1,
                                                                   ifelse(steam$owners == "1000000-2000000",1,0)))))))
-steam$successfulGame <- as.factor(steam$successfulGame)
+#steam$successfulGame <- as.factor(steam$successfulGame)
 steam <- subset(steam, select = -c(owners,categories,positive_ratings,negative_ratings,
                                    median_playtime))
 steam$required_age <- as.factor(steam$required_age)
@@ -173,9 +173,10 @@ steam_logit <- glm(successfulGame~.,
                    family = "binomial")
 ####the issue was the positive and negative ratings
 steam_logit <- glm(successfulGame~price+factor(genres) + factor(required_age)+
-                     average_playtime,
+                     average_playtime+simple_categories,
                    data = steam_train,
                    family = "binomial")
+
 summary(steam_logit)
 
 steam_train$logit_preds <- predict(steam_logit,type = "response")
@@ -184,8 +185,16 @@ steam_test$logit_preds <- predict(steam_logit,newdata = steam_test,
 
 library(plotROC)
 library(ggplot2)
+#library(PRROC)
 
-####not working
+#PRROC_obj <- roc.curve(scores.class0 = steam_train$logit_preds, 
+                       #weights.class0=steam_train$successfulGame,
+                       #curve=TRUE)
+#plot(PRROC_obj)
+
+### works but needed to leave successfulgame as a number
+
+
 train_ROC <- ggplot(steam_train,aes(m = logit_preds,
                                       d = successfulGame)) +
   geom_roc(labelsize = 3.5,
@@ -198,38 +207,23 @@ test_ROC <- ggplot(steam_test,aes(m = logit_preds,
            cutoffs.at = c(.99,.9,.7,.6,.5,.4,.1,.01)) +
   labs(title = "ROC Curve for Test Data",x = "False Positive Fraction",
        y= "True Positive Fraction")
+calc_auc(train_ROC)
+calc_auc(test_ROC)
 
+steam_train$pred_class <- ifelse(steam_train$logit_preds >.04,1,0)
+steam_test$pred_class <-ifelse(steam_test$logit_preds>.04,1,0)
 
-
-
-
-
-
-
-
-
-table(quick_preds)
-
-preds_train <- data.frame(steam_train,predictions = predict(steam_logit,type = "response"))
-preds_test <- data.frame(steam_test,predictions = predict(steam_logit,newdata = steam_test,
-                                            type = "response"))
-
-
-library(plotROC)
-library(ggplot2)
-
-inSampleROC <- ggplot(preds_train,aes(m = predictions,
-                                     d = successfulGame)) +
-  geom_roc(labelsize = 3.5,
-           cutoffs.at = c(.99,.9,.7,.6,.5,.4,.1,.01)) +
-  labs(title = "ROC Curve for In-Sample Predictions",x = "False Positive Fraction",
-       y= "True Positive Fraction")
-testROC <- ggplot(preds_test,aes(m = predictions,
-                                 d = successfulGame)) +
-  geom_roc(labelsize = 3.5,
-           cutoffs.at = c(.99,.9,.7,.6,.5,.4,.1,.01)) +
-  labs(title = "ROC Curve for Test Predictions",x = "False Positive Fraction",
-       y= "True Positive Fraction")
+library(gmodels)
+CrossTable(steam_train$pred_class,steam_train$successfulGame,
+           prop.r = FALSE,
+           prop.c = FALSE,
+           prop.t = FALSE,
+           prop.chisq = FALSE)
+CrossTable(steam_test$pred_class,steam_test$successfulGame,
+           prop.r = FALSE,
+           prop.c = FALSE,
+           prop.t = FALSE,
+           prop.chisq = FALSE)
 
 
 
@@ -273,7 +267,7 @@ ggplot(results_df,aes(x = mtry,y = oob_err)) + geom_point() +geom_line()
 ####bagging for randomforest
 steam_bagged <- randomForest(successfulGame~.,
                              data = steam_train,
-                             mtry = 9,
+                             mtry = 8,
                              ntrees = 500,
                              type = classification,
                              importance = TRUE)
