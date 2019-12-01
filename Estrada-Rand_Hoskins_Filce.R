@@ -168,16 +168,46 @@ steam_train <- steam[train_index,]
 steam_test <- steam[-train_index,]
 dim(steam_train)
 dim(steam_test)
+####this was found to have non converging values
 steam_logit <- glm(successfulGame~.,
                    data = steam_train,
                    family = "binomial")
-steam_logit <- glm(successfulGame~price+positive_ratings+
-                     negative_ratings + factor(genres) + factor(required_age),
+####the issue was the positive and negative ratings
+steam_logit <- glm(successfulGame~price+factor(genres) + factor(required_age),
                    data = steam_train,
                    family = "binomial")
 summary(steam_logit)
 
-quick_preds <- predict(steam_logit,type = "response")
+steam_train$logit_preds <- predict(steam_logit,type = "response")
+steam_test$logit_preds <- predict(steam_logit,newdata = steam_test,
+                                  type = "response")
+
+library(plotROC)
+library(ggplot2)
+
+####not working
+train_ROC <- ggplot(steam_train,aes(m = logit_preds,
+                                      d = successfulGame)) +
+  geom_roc(labelsize = 3.5,
+           cutoffs.at = c(.99,.9,.7,.6,.5,.4,.1,.01)) +
+  labs(title = "ROC Curve for Train Data",x = "False Positive Fraction",
+       y= "True Positive Fraction")
+test_ROC <- ggplot(steam_test,aes(m = logit_preds,
+                                    d = successfulGame)) +
+  geom_roc(labelsize = 3.5,
+           cutoffs.at = c(.99,.9,.7,.6,.5,.4,.1,.01)) +
+  labs(title = "ROC Curve for Test Data",x = "False Positive Fraction",
+       y= "True Positive Fraction")
+
+
+
+
+
+
+
+
+
+
 table(quick_preds)
 
 preds_train <- data.frame(steam_train,predictions = predict(steam_logit,type = "response"))
@@ -305,11 +335,20 @@ CrossTable(preds_test_2$successfulGame,preds_test_2$preds,
 
 ###tree based on the top 4 most important variables
 library(tree)
-steam_tree <- tree(successfulGame~positive_ratings +
-                     price + achievements + negative_ratings,
+steam_tree <- tree(successfulGame~.,
                    data = steam_train)
 plot(steam_tree)
 text(steam_tree,pretty = 0)
+
+tree_cv <- cv.tree(steam_tree)
+best_tree_index <- which.min(tree_cv$dev)
+tree_cv$size[best_tree_index]
+
+####same as above, thus no pruning needed
+pruned_tree <- prune.tree(steam_tree,best = 6)
+plot(pruned_tree)
+text(pruned_tree,pretty=0)
+
 
 ###performance 
 basic_preds_train <- data.frame(steam_train,preds = predict(steam_tree,
@@ -318,6 +357,7 @@ basic_preds_test <- data.frame(steam_test,preds = predict(steam_tree,
                                                           newdata = steam_test,
                                                           type = "class"))
 ###for train
+library(gmodels)
 CrossTable(basic_preds_train$successfulGame,basic_preds_train$preds,
            prop.r = FALSE,
            prop.c = FALSE,
