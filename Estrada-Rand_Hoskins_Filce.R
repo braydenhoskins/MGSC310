@@ -63,7 +63,6 @@ steam$categories <- as.factor(steam$categories)
 unique(steam$categories)
 
 
-unique(steam$categories)
 ###reducing the number of genres
 steam$genres <- fct_lump(steam$genres,n = 5)
 unique(steam$genres)

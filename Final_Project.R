@@ -11,6 +11,10 @@ library(glmnetUtils)
 library(randomForest)
 library(randomForestExplainer)
 library(caret)
+library(plotROC)
+library(PRROC)
+library(gmodels)
+library(tree)
 
 #------------------------------------#
 #       Importing Data Set           #
@@ -45,14 +49,12 @@ steam <- steam[steam$average_playtime < 40000,]
 steam <- steam[steam$negative_ratings < 2e+05,]
 steam <- steam[steam$positive_ratings < 1e+06,]
 # Removing outliers
-fct_count(steam$categories)
-steam %>%
-  mutate(categories = fct_lump(categories, n =5))%>%
-  count(categories)
-# Creating Groups of factored variables
+
 
 steam$simple_categories <- fct_lump(steam$categories,n = 4)
 # Creating a factored feature with only 4 options
+unique(steam$simple_categories)
+
 steam$categories <- ifelse(steam$categories == "Single-player","SinglePlayer",
                            ifelse(steam$categories == "Multi-player","Multi-Player",
                                   ifelse(steam$categories == "Online Multi-Player","Multi-Player",
@@ -83,8 +85,10 @@ steam$successfulGame <- ifelse(steam$owners == "10000000-20000000",1,
                                                     ifelse(steam$owners == "5000000-10000000",1,
                                                            ifelse(steam$owners == "2000000-5000000",1,
                                                                   ifelse(steam$owners == "1000000-2000000",1,0)))))))
-steam$successfulGame <- as.factor(steam$successfulGame)
-steam <- subset(steam, select = -c(owners,categories))
+
+steam <- subset(steam, select = -c(owners,categories,positive_ratings,negative_ratings,
+                                   median_playtime))
+steam$required_age <- as.factor(steam$required_age)
 # Creating variable successful game, 1 = Successful with over 1 million games sold, 0 for everything less
 
 #-------------------------------------#
@@ -106,13 +110,6 @@ corrplot(correlations)
 ggplot(steam,aes(x = achievements,y = average_playtime)) + geom_point(aes(color = successfulGame))+
   geom_smooth() + labs(x = "Number of In-Game Achievements",y = "Average Playtime (hrs)",
                        title = "Plotted Achievements and Average Playtime")
-ggplot(steam,aes(x = positive_ratings,y = negative_ratings)) + 
-  geom_point(aes(color = successfulGame))+
-  labs(x = "Number of Positive Ratings in the Steam Store",y = "Negative Ratings in the Steam Store",
-       title = "Positive Ratings Plotted Against Negative Ratings")
-ggplot(steam,aes(x = positive_ratings,y = average_playtime)) +geom_point(aes(color = successfulGame))+
-  labs(x = "Number of Positive Ratings in the Steam Store",y = "Average Playtime (hrs)",
-       title = "Average Playtime Plotted against Positive Ratings")
 ggplot(steam,aes(x = price,y = average_playtime)) + 
   geom_point(aes(color = successfulGame)) + 
   labs(x = "Price of the Game (dollars)",y ="Average Playtime (hrs)",
@@ -136,11 +133,76 @@ boxplot(steam$price~steam$categories,
 ggplot(steam,aes(x = genres,y = price)) + geom_boxplot() + 
   labs(title = "Boxplots of Price By Genre",x = "Genres",y = "Price (dollars)")
 
-summary(steam)
+#------------------------------------#
+#         Logistic Regression        #
+#------------------------------------#
+#####need to leave successfulGame as a numeric here
+
+set.seed(2019)
+train_index <- sample(1:nrow(steam),.75*nrow(steam),replace = FALSE)
+steam_train <- steam[train_index,]
+steam_test <- steam[-train_index,]
+
+####Used to find significant predictors
+steam_logit <- glm(successfulGame~.,
+                   data = steam_train,
+                   family = "binomial")
+####Now only significant predictors included
+steam_logit <- glm(successfulGame~price+factor(genres) + factor(required_age)+
+                     average_playtime+simple_categories,
+                   data = steam_train,
+                   family = "binomial")
+
+summary(steam_logit)
+
+steam_train$logit_preds <- predict(steam_logit,type = "response")
+steam_test$logit_preds <- predict(steam_logit,newdata = steam_test,
+                                  type = "response")
+
+
+PRROC_obj <- roc.curve(scores.class0 = steam_train$logit_preds, 
+weights.class0=steam_train$successfulGame,
+curve=TRUE)
+plot(PRROC_obj)
+
+train_ROC <- ggplot(steam_train,aes(m = logit_preds,
+                                    d = successfulGame)) +
+  geom_roc(labelsize = 3.5,
+           cutoffs.at = c(.99,.9,.7,.6,.5,.4,.1,.01)) +
+  labs(title = "ROC Curve for Train Data",x = "False Positive Fraction",
+       y= "True Positive Fraction")
+test_ROC <- ggplot(steam_test,aes(m = logit_preds,
+                                  d = successfulGame)) +
+  geom_roc(labelsize = 3.5,
+           cutoffs.at = c(.99,.9,.7,.6,.5,.4,.1,.01)) +
+  labs(title = "ROC Curve for Test Data",x = "False Positive Fraction",
+       y= "True Positive Fraction")
+calc_auc(train_ROC)
+calc_auc(test_ROC)
+
+steam_train$pred_class <- ifelse(steam_train$logit_preds >.04,1,0)
+steam_test$pred_class <-ifelse(steam_test$logit_preds>.04,1,0)
+
+library(gmodels)
+CrossTable(steam_train$pred_class,steam_train$successfulGame,
+           prop.r = FALSE,
+           prop.c = FALSE,
+           prop.t = FALSE,
+           prop.chisq = FALSE)
+CrossTable(steam_test$pred_class,steam_test$successfulGame,
+           prop.r = FALSE,
+           prop.c = FALSE,
+           prop.t = FALSE,
+           prop.chisq = FALSE)
+
+
 
 #------------------------------------#
 #         Random Forest Model        #
 #------------------------------------#
+###run before fitting
+steam$successfulGame <- as.factor(steam$successfulGame)
+
 set.seed(2019)
 train_idx <- sample(1:nrow(steam), size = floor(.75 * nrow(steam)))
 steam_train <- steam[train_idx,]
@@ -150,7 +212,7 @@ rf_mods <- list()
 oob_err <- NULL 
 # Used to store out of bag error
 test_err <- NULL
-for(mtry in 1:9){
+for(mtry in 1:6){
   rf_fit <- randomForest(successfulGame~.,
                          data = steam_train,
                          mtry = mtry,
@@ -158,25 +220,127 @@ for(mtry in 1:9){
                          type = classification)
   oob_err[mtry] <- rf_fit$err.rate[500]
 }
-results_df <- data.frame(mtry = 1:9,
+results_df <- data.frame(mtry = 1:6,
                          oob_err)
 ggplot(results_df,aes(x = mtry,y = oob_err)) + geom_point() +geom_line()
 # This helps us to find the best mtry for our Random Forest model
+###best mtry found to be 2
+
+
+####bagging for randomforest
+steam_bagged <- randomForest(successfulGame~.,
+                             data = steam_train,
+                             mtry = 6,
+                             ntrees = 500,
+                             type = classification,
+                             importance = TRUE)
+bagged_preds <- predict(steam_bagged,type = "response")
+table(bagged_preds)
+preds_train_bagged <- data.frame(steam_train,bag_preds = bagged_preds)
+preds_test_bagged <-data.frame(steam_test,bag_preds = predict(steam_bagged,
+                                                              newdata = steam_test,
+                                                              type = "response"))
+varImpPlot(steam_bagged)
+plot_min_depth_distribution(steam_bagged)
+plot_multi_way_importance(steam_bagged)
+
+CrossTable(preds_train_bagged$successfulGame,preds_train_bagged$bag_preds,
+           prop.r = FALSE,
+           prop.c = FALSE,
+           prop.t = FALSE,
+           prop.chisq = FALSE)
+###test confusion matrix
+CrossTable(preds_test_bagged$successfulGame,preds_test_bagged$bag_preds,
+           prop.r = FALSE,
+           prop.c = FALSE,
+           prop.t = FALSE,
+           prop.chisq = FALSE)
+
+#------------------------------------#
+#     Reduced Mtry Random Forest     #
+#------------------------------------#
+###run before fitting
+steam$successfulGame <- as.factor(steam$successfulGame)
+
+set.seed(2019)
+train_idx <- sample(1:nrow(steam), size = floor(.75 * nrow(steam)))
+steam_train <- steam[train_idx,]
+steam_test <- steam[-train_idx,]
+
 random_forest_steam <- randomForest(successfulGame~.,
                                     data = steam_train,
-                                    mtry = 4,
+                                    mtry = 2,
                                     ntrees = 500,
                                     type = classification,
                                     importance = TRUE)
-# Creating a model with the best m = 4
-rf_preds <- predict(random_forest_steam, newdata = steam_test)
+random_forest_preds <- predict(random_forest_steam,type = "response")
+preds_2 <- data.frame(steam_train,preds= random_forest_preds)
+preds_test_2 <-data.frame(steam_test,preds = predict(random_forest_steam,
+                                                     newdata = steam_test,
+                                                     type = "response"))
+#importance check
 importance(random_forest_steam)
+plot(random_forest_steam)
 varImpPlot(random_forest_steam)
-plot_min_depth_distribution(random_forest_steam)
-plot_multi_way_importance(random_forest_steam)
-# Plotting the results of the random forest model
-explain_forest(random_forest_steam)
-# Explaining the random forest model
+##training confusion matrix
+CrossTable(preds_2$successfulGame,preds_2$preds,
+           prop.r = FALSE,
+           prop.c = FALSE,
+           prop.t = FALSE,
+           prop.chisq = FALSE)
+#test confusion matrix
+CrossTable(preds_test_2$successfulGame,preds_test_2$preds,
+           prop.r = FALSE,
+           prop.c = FALSE,
+           prop.t = FALSE,
+           prop.chisq = FALSE)
+
+
+#---------------------------------------#
+#      Cross Validated Pruned Tree      #
+#---------------------------------------#
+###run before fitting
+steam$successfulGame <- as.factor(steam$successfulGame)
+
+set.seed(2019)
+train_idx <- sample(1:nrow(steam), size = floor(.75 * nrow(steam)))
+steam_train <- steam[train_idx,]
+steam_test <- steam[-train_idx,]
+###tree based on the top 4 most important variables
+steam_tree <- tree(successfulGame~.,
+                   data = steam_train)
+plot(steam_tree)
+text(steam_tree,pretty = 0)
+
+tree_cv <- cv.tree(steam_tree)
+best_tree_index <- which.min(tree_cv$dev)
+best_size <- tree_cv$size[best_tree_index]
+
+####prune the tree
+pruned_tree <- prune.tree(steam_tree,best = best_size)
+plot(pruned_tree)
+text(pruned_tree,pretty=0)
+
+
+###performance 
+basic_preds_train <- data.frame(steam_train,preds = predict(pruned_tree,
+                                                            type = "class"))
+basic_preds_test <- data.frame(steam_test,preds = predict(pruned_tree,
+                                                          newdata = steam_test,
+                                                          type = "class"))
+###for train
+CrossTable(basic_preds_train$successfulGame,basic_preds_train$preds,
+           prop.r = FALSE,
+           prop.c = FALSE,
+           prop.t = FALSE,
+           prop.chisq = FALSE)
+###for test
+CrossTable(basic_preds_test$successfulGame, basic_preds_test$preds,
+           prop.r = FALSE,
+           prop.c = FALSE,
+           prop.t = FALSE,
+           prop.chisq = FALSE)
+
 
 #---------------------------------------#
 #       Dimensionality Reduction        #
