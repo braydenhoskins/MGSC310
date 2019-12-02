@@ -148,22 +148,28 @@ steam_logit <- glm(successfulGame~.,
                    data = steam_train,
                    family = "binomial")
 ####Now only significant predictors included
-steam_logit <- glm(successfulGame~price+factor(genres) + factor(required_age)+
-                     average_playtime+simple_categories,
+steam_logit <- glm(successfulGame~price+relevel(genres,ref = "Other") + required_age+
+                     average_playtime,
                    data = steam_train,
                    family = "binomial")
 
 summary(steam_logit)
+exp(steam_logit$coefficients)
 
 steam_train$logit_preds <- predict(steam_logit,type = "response")
 steam_test$logit_preds <- predict(steam_logit,newdata = steam_test,
                                   type = "response")
 
 
-PRROC_obj <- roc.curve(scores.class0 = steam_train$logit_preds, 
-weights.class0=steam_train$successfulGame,
-curve=TRUE)
-plot(PRROC_obj)
+PRROC_obj_train <- roc.curve(scores.class0 = steam_train$logit_preds, 
+                            weights.class0=steam_train$successfulGame,
+                            curve=TRUE)
+plot(PRROC_obj_train)
+PRROC_obj_test <- roc.curve(scores.class0 = steam_test$logit_preds, 
+                             weights.class0=steam_test$successfulGame,
+                             curve=TRUE)
+plot(PRROC_obj_test)
+
 
 train_ROC <- ggplot(steam_train,aes(m = logit_preds,
                                     d = successfulGame)) +
@@ -278,6 +284,7 @@ preds_2 <- data.frame(steam_train,preds= random_forest_preds)
 preds_test_2 <-data.frame(steam_test,preds = predict(random_forest_steam,
                                                      newdata = steam_test,
                                                      type = "response"))
+#explain_forest(random_forest_steam)
 #importance check
 importance(random_forest_steam)
 plot(random_forest_steam)
