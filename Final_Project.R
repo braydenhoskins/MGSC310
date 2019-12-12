@@ -188,6 +188,10 @@ calc_auc(test_ROC)
 
 steam_train$pred_class <- ifelse(steam_train$logit_preds >.04,1,0)
 steam_test$pred_class <-ifelse(steam_test$logit_preds>.04,1,0)
+#steam_train$pred_class <- ifelse(steam_train$logit_preds >.03,1,0)
+#steam_test$pred_class <-ifelse(steam_test$logit_preds>.03,1,0)
+#steam_train$pred_class <- ifelse(steam_train$logit_preds >.02,1,0)
+#steam_test$pred_class <-ifelse(steam_test$logit_preds>.02,1,0)
 
 library(gmodels)
 CrossTable(steam_train$pred_class,steam_train$successfulGame,
