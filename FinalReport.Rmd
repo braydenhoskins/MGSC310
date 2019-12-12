@@ -261,8 +261,10 @@ CrossTable(basic_preds_test$successfulGame, basic_preds_test$preds,
 From the tree model, we once again made predictions using the model to observe its performance against the truth data.  Ultimately, we found the tree model to perform similarly to the logistic model in regards to sensitivity, whilst maintaining high accuracy and specificity, just as the other two models had.  Thus, while this model was able to offer a human readable model, it offered lower sensitivity than the random forest model.
 
 # Conclusions
-
-
+From the results of the Logistic Model, we recommend game developers place a focus on restricting the age group of their audience to 18+, because the current successful games are often more violent or feature mature themes, and are therefore restricted to the 18+ audience.
+In both the Random Forest Model and the Pruned Tree Model, we saw that Playtime and Price are the most important variables in determining the success of a game. When using these models, we suggest using the pruned tree to make fast, easily read decisions and the Random Forest when in a situation where there is time to compute.
+Overall, we recommend that game developers create games with a free to play model and maximize profits through in-game stores and subscription based perks. According to 2/3 of our models, this approach will maximize the amount of copies sold and help the game reach the largest audience.
+Moving forward, in order to further refine our models, we would like to know what types of in-game purchases have the best results between battle passes, loot boxes and other game-specific purchases. Our current data doesn't provide information on this, so we would need new datasets that provide in-game purchase statistics.
 
 
 
