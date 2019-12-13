@@ -163,16 +163,28 @@ test_ROC
 ```
 Looking at the ROC plots above, it is clear to see that the optimal cutoff for our logistic model resides between 0.1 and 0, indicative of a very low cutoff to maximize true positives and minimize false positives.
 ```{r,echo = FALSE}
+print("Train Confusion Matrix")
 CrossTable(steam_train$pred_class,steam_train$successfulGame,
            prop.r = FALSE,
            prop.c = FALSE,
            prop.t = FALSE,
            prop.chisq = FALSE)
+print("Accuracy: 94.8%") 
+print("Sensitivity: 46%")
+print("Specificity: 95.7%")
+
+```
+
+```{r,echo = FALSE}
+print("Test Confusion Matrix")
 CrossTable(steam_test$pred_class,steam_test$successfulGame,
            prop.r = FALSE,
            prop.c = FALSE,
            prop.t = FALSE,
            prop.chisq = FALSE)
+print("Accuracy: 94.9%") 
+print("Sensitivity: 51%")
+print("Specificity: 95.7%")
 ```
 After considering different cutoffs between 0.1 and 0, we decided to use a cutoff of .04 as going any closer to 0 would increase sensitivity while sharply penalizing specificity.  Although the accuracy, and the specificity of this model is relatively strong on both test and training datasets, it becomes clear that there is much to be desired in terms of sensitivity.  With this in mind we set out to improve sensitivity while maintaining the optimal levels of specificity and accuracy.
 ## RandomForest
@@ -201,17 +213,25 @@ varImpPlot(random_forest_steam)
 ```
 As seen in the importance plot the variables of average playtime and price are the two most important variables in the 500 trees made in the random forest model.  This largely aligned with the “random forest explained” results that are included outside of this report due to their formatting.  The figures included in that report indicate that average playtime and required age were used as roots the most while also having the lowest average depth in each tree, once again highlighting the most important variables as predictors. 
 ```{r,echo = FALSE}
+print("Train Confusion Matrix")
 CrossTable(preds_2$successfulGame,preds_2$preds,
            prop.r = FALSE,
            prop.c = FALSE,
            prop.t = FALSE,
            prop.chisq = FALSE)
-#test confusion matrix
+print("Accuracy: 98.1%")
+print("Sensitivity: 60.6%")
+print("Specificity: 98.4")
+
+print("Test Confusion Matrix")
 CrossTable(preds_test_2$successfulGame,preds_test_2$preds,
            prop.r = FALSE,
            prop.c = FALSE,
            prop.t = FALSE,
            prop.chisq = FALSE)
+print("Accuracy: 98.3%")
+print("Sensitivity: 75%")
+print("Specificity: 98.4")
 ```
 After making predictions using the random forest model, the above confusion matrices were produced.  Here it is clear that the random forest model was able to maintain the high level of accuracy and specificity while also increasing the sensitivity of the model. An increase of roughly 20-30% in sensitivity was able to make this model much more effective at predicting if a game is successful.  Thus this model was able to outperform the initial logistic regression model.
 
@@ -245,22 +265,30 @@ basic_preds_train <- data.frame(steam_train,preds = predict(pruned_tree,
 basic_preds_test <- data.frame(steam_test,preds = predict(pruned_tree,
                                                           newdata = steam_test,
                                                           type = "class"))
-###for train
+print("Train Confusion Matrix")
 CrossTable(basic_preds_train$successfulGame,basic_preds_train$preds,
            prop.r = FALSE,
            prop.c = FALSE,
            prop.t = FALSE,
            prop.chisq = FALSE)
-###for test
+print("Accuracy: 98%")
+print("Sensitivity: 42.9%")
+print("Specificity: 98.3")
+
+print("Test Conusion Matrix")
 CrossTable(basic_preds_test$successfulGame, basic_preds_test$preds,
            prop.r = FALSE,
            prop.c = FALSE,
            prop.t = FALSE,
            prop.chisq = FALSE)
+print("Accuracy: 98.1%")
+print("Sensitivity: 53.7%")
+print("Specificity: 98.3")
 ```
 From the tree model, we once again made predictions using the model to observe its performance against the truth data.  Ultimately, we found the tree model to perform similarly to the logistic model in regards to sensitivity, whilst maintaining high accuracy and specificity, just as the other two models had.  Thus, while this model was able to offer a human readable model, it offered lower sensitivity than the random forest model.
 
 # Conclusions
+
 From the results of the Logistic Model, we recommend game developers place a focus on restricting the age group of their audience to 18+, because the current successful games are often more violent or feature mature themes, and are therefore restricted to the 18+ audience.
 In both the Random Forest Model and the Pruned Tree Model, we saw that Playtime and Price are the most important variables in determining the success of a game. When using these models, we suggest using the pruned tree to make fast, easily read decisions and the Random Forest when in a situation where there is time to compute.
 Overall, we recommend that game developers create games with a free to play model and maximize profits through in-game stores and subscription based perks. According to 2/3 of our models, this approach will maximize the amount of copies sold and help the game reach the largest audience.
